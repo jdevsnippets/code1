@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="sxp-kafka-client" default="package" basedir=".">
+	<property name="ant.build.finalName" value="sxp-kafka-client" />
+	<property name="ant.build.dir" value="build" />
+	<property name="ant.build.outputDir" value="${ant.build.dir}/classes" />
+	<property name="ant.build.srcDir.0" value="src" />
+	<property name="ant.build.resourceDir.0" value="resources" />
+	<property name="external.dir" value="../../../external" />
+	<property name="platform.dir" value="../../../platform" />
+	<property name="platform.core.api.build.dir" value="${platform.dir}/core/api/build/jar" />
+	<property name="vsn.home" location="../../" />
+	<property name="ant.dist" value="${ant.build.dir}/dist" />
+	<property name="ant.dist.lib" value="${ant.dist}/lib" />
+
+	<fileset id="build.classpath.fileset" dir="${external.dir}">
+		<include name="kafka/kafka-clients-0.9.0.0.jar" />
+		<include name="kafka/kafka_2.9.2-0.8.1.1.jar" />
+		<include name="kafka/scala-library-2.9.2.jar" />
+		<include name="kafka/zkclient-0.3.jar" />
+		<include name="jersey2.22/jackson-core-2.8.7.jar" />
+		<include name="jersey2.22/jackson-databind-2.2.3.jar" />
+		<include name="jersey2.22/jackson-annotations-2.2.3.jar"/>
+		<include name="kafka/zookeeper.jar" />
+		
+		<include name="lib/slf4j-api.jar" />
+		<include name="lib/slf4j-jdk14.jar" />
+		<include name="lib/spring/spring-core-4.1.6.RELEASE.jar" />
+		<include name="lib/hibernate/javassist-3.18.1-GA.jar" />
+		<include name="jersey2.0client/guava-13.0.jar" />
+		<include name="vsn/hadoop/commons-configuration-1.6.jar" />
+		<include name="lib/commons-lang-2.5.jar" />
+		<include name="lib/commons-logging-1.1.1.jar" />
+		<include name="lib/commons-collections-3.2.2.jar" />
+		<include name="lib/spring/spring-context-4.1.6.RELEASE.jar" />
+		<include name="lib/spring/spring-core-4.1.6.RELEASE.jar" />
+		<include name="lib/spring/spring-beans-4.1.6.RELEASE.jar" />
+	</fileset>
+
+	<fileset id="internal.dep.lib.platform-api.fileset" dir="${platform.core.api.build.dir}">
+	  <include name="platform-api.jar" />
+	   </fileset>
+	   
+	<path id="build.classpath">
+		<fileset refid="build.classpath.fileset" />
+		<fileset refid="internal.dep.lib.platform-api.fileset" />
+	</path>
+
+	<target name="clean" description="Clean the output directory">
+		<delete dir="${ant.build.dir}" />
+	</target>
+
+	<target name="compile" description="Compile the code">
+		<mkdir dir="${ant.build.outputDir}" />
+		<javac destdir="${ant.build.outputDir}" nowarn="true" debug="true" includeantruntime="false" optimize="false" deprecation="false" target="1.8" verbose="false" fork="false" source="1.8">
+			<src>
+				<pathelement location="${ant.build.srcDir.0}" />
+			</src>
+			<classpath refid="build.classpath" />
+		</javac>
+	</target>
+
+	<target name="commons.jar" depends="clean,compile">
+		<echo>----------------------------------------------------></echo>
+		<echo>---                                          ----------></echo>
+		<echo>---  BUILDING SXP KAFKA CLIENT(V1) COMMONS JAR ----------></echo>
+		<echo>---                                          ----------></echo>
+		<echo>-----------------------------------------------------></echo>
+		<jar jarfile="${ant.build.dir}/commons.jar" compress="true" index="false" basedir="${ant.build.outputDir}">
+			<include name="com/cisco/sxp/event/kafka/bean/*" />
+		</jar>
+	</target>
+	<target name="packagetmp" depends="clean,compile" description="Package the application">
+		<echo>----------------------------------------------------></echo>
+		<echo>---                                          ----------></echo>
+		<echo>---      	BUILDING SXP KAFKA CLIENT(V1)         ------------></echo>
+		<echo>---                                          ----------></echo>
+		<echo>-----------------------------------------------------></echo>
+		<jar jarfile="${ant.build.dir}/${ant.build.finalName}.jar" compress="true" index="false" basedir="${ant.build.outputDir}" />
+
+		<!--delete dir="${ant.build.dir}/classes" /-->
+	</target>
+	<target name="package">
+		<antcall target="packagetmp" />
+		<antcall target="jar" />
+	</target>
+
+	<pathconvert property="classpath.name" pathsep=" ">
+		<path refid="build.classpath" />
+		<mapper>
+			<chainedmapper>
+				<flattenmapper />
+				<globmapper from="*.jar" to="lib/*.jar" />
+			</chainedmapper>
+		</mapper>
+	</pathconvert>
+
+	<target name="copy-dependencies">
+		<mkdir dir="${ant.dist.lib}" />
+
+		<copy todir="${ant.dist.lib}" flatten="true">
+			<fileset dir="${ant.build.resourceDir.0}">
+				<include name="**/*.*" />
+			</fileset>
+			<fileset refid="build.classpath.fileset" />
+			<fileset refid="internal.dep.lib.platform-api.fileset" />
+		</copy>
+
+		<jar jarfile="${ant.dist}/dependencies-all.jar">
+			<zipgroupfileset dir="${ant.dist.lib}">
+				<include name="**/*.jar" />
+			</zipgroupfileset>
+		</jar>
+
+	</target>
+	<target name="jar" depends="copy-dependencies">
+		<echo>Building Kafka client jar</echo>
+		<jar jarfile="${ant.build.dir}/sxp-kafkaclient-standalone.jar" basedir="${ant.build.outputDir}">
+			<manifest>
+				<attribute name="Main-Class" value="com.event.kafka.console.ConsoleDriver" />
+				<attribute name="Class-Path" value="${classpath.name}" />
+			</manifest>
+			<zipfileset src="${ant.dist}/dependencies-all.jar" excludes="META-INF/*.SF" />
+			<fileset file="${ant.dist.lib}/*.txt" />
+		</jar>
+		<copy todir="${ant.build.dir}" flatten="true">
+			<fileset dir="${ant.build.resourceDir.0}">
+				<include name="**/*.*" />
+			</fileset>
+		</copy>
+		<!--delete dir="${ant.dist}" /-->
+		<!--delete dir="${ant.build.dir}/classes" /-->
+	</target>
+</project>
